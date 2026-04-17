@@ -1,0 +1,16 @@
+[
+    {
+        "dtype": "trainImgBoldWrinkle",
+        "dir_name": "imgWrinkle",
+        "version": "0.0.0",
+        "file_name": "trainImgWrinkle",
+        "class_name": "CTrainImgWrinkle"
+    },
+    {
+        "dtype": "trainImgSlimWrinkle",
+        "dir_name": "imgWrinkle",
+        "version": "0.0.0",
+        "file_name": "trainImgWrinkle",
+        "class_name": "CTrainImgWrinkle"
+    }
+]

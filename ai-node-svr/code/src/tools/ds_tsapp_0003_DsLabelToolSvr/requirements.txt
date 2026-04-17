@@ -1,0 +1,14 @@
+oss2
+PyYAML
+requests==2.23.0
+scipy
+scikit-image
+python-dotenv
+whatimage
+matplotlib
+opencv-python==4.11.0.86
+pillow
+minio
+flasgger
+colorlog
+apscheduler

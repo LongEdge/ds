@@ -1,0 +1,8 @@
+tool_id: "ds-tsapp-0003"
+version: "v001"
+local_data_path: "data/"    #在node节点的配置文件中定义了tmp_data目录，该目录为相对目录
+local_model_path: "models/" #在node节点的配置文件中定义了persist_data目录，该目录为相对目录
+
+dconn_name : "DS_MINIO_COMPANY_INNER" #open.datashell.cn中的连接名称
+wrinkle_remote_root_path : "AIDataManage/CskinWrinkle" #皱纹在minio中的存储位置根路径
+itemCategory_remote_root_path : "AIDataManage/DsImgRecognition" #物品分类在minio中的存储位置根路径

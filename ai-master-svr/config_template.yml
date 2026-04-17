@@ -1,0 +1,5 @@
+node_id: "6061"
+API_KEY: "<REDACTED_API_KEY>"
+network_ip_int: "<PRIVATE_IP>"
+network_ip_ext: "<PRIVATE_HOST>"
+protocol: "http"

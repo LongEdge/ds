@@ -1,0 +1,9 @@
+[
+    {
+        "dtype": "trainVideoTracking",
+        "dir_name": "videoTracking",
+        "version": "0.0.0",
+        "file_name": "trainVideoTracking",
+        "class_name": "CTrainVideoTracking"
+    }
+]

@@ -1,0 +1,19 @@
+plt_url: "http://<PRIVATE_HOST>:6061"
+port: "9000"
+sqlite_port: "8225"
+API_KEY: "<REDACTED_API_KEY>"
+network_ip_int: "<PRIVATE_IP>"
+network_ip_ext: "<PRIVATE_HOST>"
+protocol: "http"
+version: "1.0.0" # internal version must match app.py
+# progressCfg: {
+#   "kafka": {},
+#   "mqtt": {
+#     host: "<PRIVATE_HOST>",
+#     port: 1883,
+#     client_id: "<REDACTED_CLIENT_ID>",
+#     topic: "<REDACTED_TOPIC>",
+#     username: "<REDACTED_USERNAME>",
+#     password: "<REDACTED_PASSWORD>"
+#   }
+# }

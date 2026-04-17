@@ -1,0 +1,13 @@
+gunicorn
+Flask
+Flask-Cors
+PyYAML==3.13
+requests==2.20.0
+python-dotenv==0.9.1
+flasgger
+colorlog
+apscheduler
+paho-mqtt
+ruamel.yaml
+gevent
+PyJWT

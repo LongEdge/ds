@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>图片分类工具 - 快速键盘标注</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="theme.css" />
+    <style>
+      /* using shared variables from theme.css */
+      body {
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans",
+          "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: #e6f6ff;
+        background: radial-gradient(
+            1200px 600px at 10% 10%,
+            rgba(100, 255, 218, 0.08),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 500px at 90% 20%,
+            rgba(255, 119, 198, 0.08),
+            transparent 60%
+          ),
+          linear-gradient(140deg, #0b1020, #12172a 45%, #1a1a2e);
+        background-size: cover;
+        min-height: 100vh;
+      }
+      /* using .glass-card and .neon-border from theme.css */
+      .sidebar {
+        width: 360px;
+      }
+      .tree-item {
+        cursor: pointer;
+        user-select: none;
+      }
+      .level-1 {
+        color: #dbeafe;
+        font-weight: 700;
+      }
+      .level-2 {
+        color: #93c5fd;
+      }
+      .level-3 {
+        color: #86efac;
+      }
+      .code-input {
+        background: rgba(0, 0, 0, 0.35);
+        border: 2px solid transparent;
+        color: #e6f6ff;
+        outline: none;
+        transition: all 0.2s ease;
+      }
+      .code-input::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+        letter-spacing: 0.15em;
+      }
+      .code-input:focus {
+        border-color: var(--primary-cyan);
+        box-shadow: 0 8px 24px rgba(100, 255, 218, 0.35);
+      }
+      .btn-gradient {
+        background: linear-gradient(
+          45deg,
+          var(--primary-cyan),
+          var(--primary-pink)
+        );
+        color: #0a0f1c;
+        border: none;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        box-shadow: 0 8px 22px rgba(100, 255, 218, 0.35);
+      }
+      .btn-gradient:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 30px rgba(100, 255, 218, 0.55);
+      }
+      .btn-outline {
+        border: 2px solid var(--primary-cyan);
+        color: #e6f6ff;
+        background: rgba(0, 0, 0, 0.25);
+      }
+      .status-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .img-wrap {
+        position: relative;
+        overflow: hidden;
+      }
+      .img-wrap img {
+        max-width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+        border-radius: 12px;
+      }
+
+      /* 小屏适配 */
+      @media (max-width: 1024px) {
+        .sidebar {
+          width: 100%;
+          position: fixed;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          transform: translateX(100%);
+          transition: transform 0.25s;
+          z-index: 40;
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen background-animated">
+    <!-- 顶部栏 -->
+    <header
+      class="nav-bar px-4 lg:px-6 py-3 flex items-center justify-between sticky top-0 z-30"
+    >
+      <div class="flex items-center gap-3">
+        <button
+          id="btnToggleSidebar"
+          class="lg:hidden p-2 rounded-md btn-secondary-outline"
+        >
+          <i class="fas fa-bars"></i>
+        </button>
+        <h1 class="text-xl font-bold">图片分类工具</h1>
+        <span class="text-sm text-slate-300">键盘优先 · 轻量高效</span>
+      </div>
+    </header>
+
+    <!-- 进度徽章改为在预览卡标题居中展示 -->
+
+    <div
+      class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 p-4 lg:p-6 pb-24"
+    >
+      <!-- 左侧：主区域（预览） -->
+      <main class="flex-1">
+        <section class="glass-card neon-border p-4 md:p-6 rounded-2xl">
+          <div class="relative flex items-center justify-between mb-3">
+            <div class="text-slate-300 text-sm">
+              当前任务:
+              <span id="task-path" class="font-mono text-slate-200"></span>
+            </div>
+            <div
+              class="absolute inset-x-0 text-center pointer-events-none text-cyan-300 font-black text-xl"
+            >
+              已标注数量：<span id="stat-completed-text">100个</span>
+            </div>
+            <button
+              id="btnReloadTask"
+              class="btn-secondary-outline px-3 py-1.5 rounded-md text-sm"
+            >
+              <i class="fa fa-rotate"></i> 刷新任务
+            </button>
+          </div>
+          <div
+            class="img-wrap grid place-items-center bg-black/20 rounded-xl p-3 min-h-[360px]"
+          >
+            <img id="previewImg" alt="预览图" />
+          </div>
+        </section>
+      </main>
+
+      <!-- 右侧：分类树 + 右下输入面板 -->
+      <div
+        class="right-col flex flex-col gap-6 min-h-[calc(100vh-140px)] max-h-[calc(100vh-140px)] overflow-hidden"
+      >
+        <!-- 侧边分类树（右侧） -->
+        <aside
+          id="sidebar"
+          class="glass-card neon-border p-4 overflow-y-auto rounded-2xl"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-semibold text-slate-100">分类树</div>
+            <button
+              id="btnAddCategory"
+              class="btn-primary-neon px-3 py-1.5 rounded-md text-sm"
+            >
+              <i class="fa fa-plus mr-1"></i>新增
+            </button>
+          </div>
+          <div id="classifyTree" class="space-y-1"></div>
+        </aside>
+
+        <!-- 输入区：右下角大型面板，充满右栏剩余区域，带边框与间距 -->
+        <section
+          id="inputPanel"
+          class="glass-card neon-border p-4 md:p-6 rounded-2xl grow min-h-0 max-h-full overflow-auto"
+        >
+          <div class="mb-2 text-slate-200">分类编码</div>
+          <input
+            id="codeInput"
+            class="input-glass w-full px-4 py-4 rounded-xl text-2xl tracking-widest font-mono"
+            placeholder="例如：001002003"
+            inputmode="numeric"
+            autocomplete="off"
+          />
+          <p class="mt-2 text-slate-400 text-sm">
+            按 Enter 提交并自动加载下一张。
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <!-- 新增分类 Modal -->
+      <div
+        id="modalMask"
+        class="fixed inset-0 bg-black/30 hidden flex items-center justify-center z-50"
+      >
+      <div
+        class="glass-card w-[640px] max-w-[92vw] min-h-[420px] rounded-2xl p-8 relative"
+      >
+        <button
+          id="modalClose"
+          class="absolute right-6 top-6 p-2 rounded-md btn-secondary-outline"
+        >
+          <i class="fa fa-times"></i>
+        </button>
+        <h3 class="text-xl font-semibold mb-6 text-slate-100">新增分类</h3>
+        <div class="grid grid-cols-1 gap-4">
+          <div>
+            <label class="text-sm text-slate-300">分类编码(code)</label>
+            <input
+              id="newCode"
+              class="mt-1 w-full px-3 py-2 rounded-lg code-input"
+              placeholder="如：001002003"
+            />
+          </div>
+          <div>
+            <label class="text-sm text-slate-300">分类名称(desc)</label>
+            <input
+              id="newDesc"
+              class="mt-1 w-full px-3 py-2 rounded-lg code-input"
+              placeholder="例如：方便面"
+            />
+          </div>
+        </div>
+        <div class="mt-4 mb-6 flex items-center justify-center gap-4">
+          <button id="modalOk" class="btn-primary-neon px-5 py-2 rounded-lg">
+            <i class="fa fa-check mr-1"></i> 确认
+          </button>
+          <button id="modalCancel" class="btn-secondary-outline px-5 py-2 rounded-lg">
+            关闭
+          </button>
+          <span id="modalMsg" class="ml-2 text-sm text-slate-300"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态栏 -->
+    <footer
+      class="status-bar glass-card py-2 px-4 text-sm flex items-center justify-between"
+    >
+      <div id="statusText">就绪</div>
+      <div id="msgText" class="text-slate-600"></div>
+    </footer>
+
+    <!-- Libs -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="./api.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // 从 URL 读取登录后的凭证并持久化，供 api.js 的拦截器使用
+        try {
+          const sp = new URLSearchParams(window.location.search);
+          const auth = sp.get('auth');
+          const clientid = sp.get('clientid');
+          if (auth) localStorage.setItem('authToken', auth);
+          if (clientid) localStorage.setItem('clientId', clientid);
+        } catch (e) {
+          console.warn('无法解析地址栏参数', e);
+        }
+
+        const els = {
+          sidebar: document.getElementById("sidebar"),
+          toggleSidebar: document.getElementById("btnToggleSidebar"),
+          classifyTree: document.getElementById("classifyTree"),
+          btnAddCategory: document.getElementById("btnAddCategory"),
+          previewImg: document.getElementById("previewImg"),
+          taskPath: document.getElementById("task-path"),
+          codeInput: document.getElementById("codeInput"),
+          btnReloadTask: document.getElementById("btnReloadTask"),
+          statCompletedText: document.getElementById("stat-completed-text"),
+          statusText: document.getElementById("statusText"),
+          msgText: document.getElementById("msgText"),
+          // modal
+          modalMask: document.getElementById("modalMask"),
+          modalClose: document.getElementById("modalClose"),
+          modalCancel: document.getElementById("modalCancel"),
+          modalOk: document.getElementById("modalOk"),
+          modalMsg: document.getElementById("modalMsg"),
+          newCode: document.getElementById("newCode"),
+          newDesc: document.getElementById("newDesc"),
+        };
+
+        const state = {
+          classifyTree: [],
+          currentTask: null,
+          currentImgPath: "",
+          completedCountLocal: 100,
+          demoIndex: 0,
+        };
+
+        const demoMode = true; // 使用本地伪造数据与图片
+
+        // Utils
+        function setStatus(text) {
+          els.statusText.textContent = text;
+        }
+        function setMsg(text) {
+          els.msgText.textContent = text || "";
+        }
+
+        // Sidebar toggle (mobile)
+        els.toggleSidebar.addEventListener("click", () => {
+          els.sidebar.classList.toggle("open");
+        });
+
+        // 伪造分类树数据（三级）
+        const fakeTree = [
+          {
+            code: "001",
+            desc: "食品",
+            sub_categories: [
+              {
+                code: "001",
+                desc: "方便食品",
+                sub_categories: [
+                  { code: "001", desc: "方便面" },
+                  { code: "002", desc: "自热米饭" },
+                ],
+              },
+              {
+                code: "002",
+                desc: "饮料",
+                sub_categories: [
+                  { code: "001", desc: "碳酸饮料" },
+                  { code: "002", desc: "果汁" },
+                ],
+              },
+            ],
+          },
+          {
+            code: "002",
+            desc: "生活",
+            sub_categories: [
+              {
+                code: "001",
+                desc: "清洁",
+                sub_categories: [{ code: "001", desc: "洗衣液" }],
+              },
+              {
+                code: "002",
+                desc: "家居",
+                sub_categories: [{ code: "001", desc: "收纳盒" }],
+              },
+            ],
+          },
+          {
+            code: "003",
+            desc: "数码",
+            sub_categories: [
+              {
+                code: "001",
+                desc: "手机",
+                sub_categories: [{ code: "001", desc: "智能机" }],
+              },
+            ],
+          },
+          {
+            code: "004",
+            desc: "服饰",
+            sub_categories: [
+              {
+                code: "001",
+                desc: "上装",
+                sub_categories: [{ code: "001", desc: "T恤" }],
+              },
+            ],
+          },
+          {
+            code: "005",
+            desc: "家电",
+            sub_categories: [
+              {
+                code: "001",
+                desc: "厨电",
+                sub_categories: [{ code: "001", desc: "电饭煲" }],
+              },
+              {
+                code: "002",
+                desc: "清洁电器",
+                sub_categories: [{ code: "001", desc: "扫地机" }],
+              },
+            ],
+          },
+          {
+            code: "006",
+            desc: "玩具",
+            sub_categories: [
+              {
+                code: "001",
+                desc: "积木",
+                sub_categories: [{ code: "001", desc: "拼装积木" }],
+              },
+              {
+                code: "002",
+                desc: "模型",
+                sub_categories: [{ code: "001", desc: "高达" }],
+              },
+            ],
+          },
+        ];
+
+        const fakeTasks = ["/1.jpg", "/2.jpg"];
+
+        // Tree Rendering
+        function renderTree(container, nodes, level) {
+          container.innerHTML = "";
+          if (!Array.isArray(nodes)) return;
+          nodes.forEach((node) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "tree-item";
+            const header = document.createElement("div");
+            header.className = "flex items-start gap-2 py-1";
+            const toggle = document.createElement("i");
+            toggle.className = "fas fa-chevron-right text-slate-400 mt-1";
+            const label = document.createElement("div");
+            label.className = `flex-1 ${
+              level === 1 ? "level-1" : level === 2 ? "level-2" : "level-3"
+            }`;
+            label.textContent = `${node.code} ${node.desc || ""}`;
+            header.appendChild(toggle);
+            header.appendChild(label);
+            const children = document.createElement("div");
+            children.className = "ml-5 hidden";
+            wrapper.appendChild(header);
+            wrapper.appendChild(children);
+            // Auto-expand first and second levels
+            if (level <= 2) {
+              children.classList.remove("hidden");
+              toggle.classList.add("fa-chevron-down");
+              toggle.classList.remove("fa-chevron-right");
+            }
+            header.addEventListener("click", () => {
+              const open = children.classList.toggle("hidden");
+              toggle.classList.toggle("fa-chevron-right");
+              toggle.classList.toggle("fa-chevron-down");
+            });
+            container.appendChild(wrapper);
+            if (
+              Array.isArray(node.sub_categories) &&
+              node.sub_categories.length
+            ) {
+              // Render children immediately but keep them collapsed by default
+              node.sub_categories.forEach((sub) => {
+                const subContainer = document.createElement("div");
+                renderTree(subContainer, [sub], level + 1);
+                children.appendChild(subContainer.firstChild);
+              });
+              children.dataset.rendered = "1";
+            }
+          });
+        }
+
+        async function loadClassifyTree() {
+          setStatus("加载分类树...");
+          state.classifyTree = demoMode ? fakeTree : [];
+          renderTree(els.classifyTree, state.classifyTree, 1);
+          setStatus("分类树已加载");
+        }
+
+        function buildImgPath(task) {
+          return task || "";
+        }
+
+        async function loadNewTask() {
+          setStatus("请求新任务...");
+          const path = fakeTasks[state.demoIndex % fakeTasks.length];
+          state.demoIndex += 1;
+          state.currentTask = path;
+          state.currentImgPath = buildImgPath(path);
+          els.taskPath.textContent = state.currentImgPath;
+          await loadImage(state.currentImgPath);
+          setStatus("任务已加载");
+        }
+
+        async function loadImage(imgPath) {
+          setStatus("加载图片...");
+          els.previewImg.src = imgPath; // 直接使用本地图片
+          setStatus("图片就绪");
+        }
+
+        // 去除服务端统计，聚焦 UI
+
+        async function submitCode() {
+          const code = els.codeInput.value.replace(/\D/g, "");
+          if (!code) {
+            setMsg("请输入分类编码");
+            return;
+          }
+          if (!state.currentImgPath) {
+            setMsg("当前无任务");
+            return;
+          }
+          // demo 模式：直接计数并切换下一张
+          state.completedCountLocal += 1;
+          if (els.statCompletedText)
+            els.statCompletedText.textContent = state.completedCountLocal + '个';
+          els.codeInput.value = "";
+          await loadNewTask();
+          setStatus("提交成功，已加载下一张");
+          els.codeInput.focus();
+        }
+
+        // Events
+        els.codeInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submitCode();
+          }
+        });
+        els.btnReloadTask.addEventListener("click", () => loadNewTask());
+
+        // Modal events
+        function openModal() {
+          els.modalMask.classList.remove("hidden");
+          els.newCode.value = "";
+          els.newDesc.value = "";
+          els.modalMsg.textContent = "";
+          setTimeout(() => els.newCode.focus(), 0);
+        }
+        function closeModal() {
+          els.modalMask.classList.add("hidden");
+        }
+        els.btnAddCategory.addEventListener("click", openModal);
+        els.modalClose.addEventListener("click", closeModal);
+        els.modalCancel.addEventListener("click", closeModal);
+        els.modalOk.addEventListener("click", async () => {
+          const code = els.newCode.value.trim();
+          const desc = els.newDesc.value.trim();
+          if (!code || !/^[0-9]+$/.test(code)) {
+            els.modalMsg.textContent = "编码仅支持数字";
+            return;
+          }
+          if (!desc) {
+            els.modalMsg.textContent = "请填写名称";
+            return;
+          }
+          // demo：直接本地添加
+          els.modalMsg.textContent = "添加成功";
+          fakeTree.push({ code, desc, sub_categories: [] });
+          await loadClassifyTree();
+          setTimeout(closeModal, 300);
+        });
+
+        // Init
+        (async function init() {
+          els.codeInput.focus();
+          if (els.statCompletedText)
+            els.statCompletedText.textContent = state.completedCountLocal + '个';
+          await loadClassifyTree();
+          await loadNewTask();
+        })();
+      });
+    </script>
+  </body>
+</html>

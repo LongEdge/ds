@@ -1,0 +1,160 @@
+﻿# 浜戝瓨鍌ㄨ繛鎺ラ厤缃俊鎭?"cloud_storage_dconn_cfg": {
+    "ds_pg_minio": {
+        "STORAGE_TYPE": "minio",
+        "ACCESS_KEY": "<REDACTED_USERNAME>",
+        "SECRET_KEY": "<REDACTED_PASSWORD>",
+        "END_POINT": "<PRIVATE_IP>:9000",
+        # "END_POINT": "<PRIVATE_HOST>:9900",
+        "BUCKET_NAME": "ds-data-ware"
+    },
+    "ds_pg_gpu_work_data":{
+        "STORAGE_TYPE": "local",  #鏈湴纾佺洏绌洪棿
+        "BUCKET_PATH": "/data_ware/work_data/" #鏈熬淇濈暀鈥?鈥?    },
+    "ds_pg_gpu_data_backup":{
+        "STORAGE_TYPE": "local",
+        "BUCKET_PATH": "/data_ware/data_backup/" #鏈熬淇濈暀鈥?鈥?    },
+    "ds_pg_gpu02_data_backup":{
+        "STORAGE_TYPE": "remote-linux",   #杩滅▼linux纾佺洏绌洪棿锛屽彲浠ョ敤scp鍛戒护瀹炵幇浼犺緭
+        "REMOTE_HOST": "<PRIVATE_IP>",
+        "REMOTE_PORT": "22",
+        "REMOTE_USER": "root",
+        "REMOTE_PASSWORD": "<REDACTED_PASSWORD>",
+        "BUCKET_PATH": "/data_ware/data_backup/" #鏈熬淇濈暀鈥?鈥?    }
+}
+
+# 璇︾粏瑙勫畾姣忎釜鍔熻兘鐨勮皟鐢ㄥ弬鏁帮紝姣忔杩愯宸ュ叿閮藉湪杩欓噷淇敼閰嶇疆鏂囦欢淇℃伅
+# 銆愭敞鎰忋€戯細姣忎釜鍑芥暟鐨勫弬鏁伴厤缃鏄庯紝鍦╬rocessor.py涓壘瀵瑰簲鐨勫嚱鏁版敞閲?"function_cfg": {
+    "syncFilesFromMino2LocalDisk":[{ # 鎶婁簯绔殑鐨辩汗鏁版嵁鍚屾鍒版湰鍦?        "func_name": "syncFilesFromMino2LocalDisk",
+        "params":{
+            "FromMino2LocalDisk_src_storage_conn_name": "ds_pg_minio",
+            "FromMino2LocalDisk_src_path" :"AIDataManage/DsImgRecognition",
+            "FromMino2LocalDisk_dst_storage_conn_name": "ds_pg_gpu_work_data",
+            "FromMino2LocalDisk_dst_path": "dsImgRecognition",
+            "FromMino2LocalDisk_sync_mode": "IncSync"  #鍚屾鏂瑰紡锛堟敞鎰忥細鍏ㄩ噺鍚屾 FullSync 姣旇緝鍗遍櫓锛屾厧閲嶏級
+        }
+    }],
+    "syncFilesFromLocalDisk2Minio":[{ # 鎶婃湰鍦扮殑鐨辩汗鏁版嵁鍚屾鍒颁簯绔?        "func_name": "syncFilesFromLocalDisk2Minio",
+        "params":{
+            "FromLocalDisk2Minio_src_storage_conn_name": "ds_pg_gpu_work_data",
+            "FromLocalDisk2Minio_src_path" :"dsImgRecognition",
+            "FromLocalDisk2Minio_dst_storage_conn_name": "ds_pg_minio",
+            "FromLocalDisk2Minio_dst_path": "AIDataManage/DsImgRecognition",
+            "FromLocalDisk2Minio_sync_mode": "IncSync"  #鍚屾鏂瑰紡锛堟敞鎰忥細鍏ㄩ噺鍚屾 FullSync 姣旇緝鍗遍櫓锛屾厧閲嶏級
+        }
+    }],
+    "datapreprocess":[{ # 妫€鏌ュ浘鍍忔槸鍚︾牬鎹?        "func_name": "dataPreProcess",
+        "params":{
+            "folder_paths": [ 
+            "/data_ware/work_data/dsImgRecognition/src-img/00000",
+            # "/data_ware/work_data/DsImgRecognition/src-img/00001/"
+            "/data_ware/work_data/dsImgRecognition/src-img/00001"
+        ]
+        }
+    }],
+    "trainClassifyImgModuleByUnet":[{ # 鐢║net妗嗘灦璁粌鍥惧儚妯″瀷
+        "func_name": "trainImgModuleByUnet",
+        "params":{
+            "train_img_dirs": [ 
+            "/data_ware/work_data/dsImgRecognition/src-img/00000",
+            "/data_ware/work_data/dsImgRecognition/src-img/00001"
+            ], 
+            "train_label_dirs":[
+            "/data_ware/work_data/dsImgRecognition/img-recog/00000",
+            "/data_ware/work_data/dsImgRecognition/img-recog/00001"],
+            "train_model_dir": "/data_ware/work_data/dsImgRecognition/models", #妯″瀷瀛樻斁鍦板潃
+            "train_model_name": "01-2-1", # 妯″瀷鍚嶇О 
+            "train_img_size": 512, # 璁粌鍥剧墖澶у皬 a*a
+            "train_batch_size": 4, # 鎵规澶у皬锛屾瘡杞缁冪殑鍥剧墖鏁伴噺
+            "train_epochs": 10, # 璁粌杞暟
+            "train_lr": 0.001, # 瀛︿範鐜?            "train_val_ratio": 0.1, #楠岃瘉闆嗗ぇ灏?            "train_patience": 15, #杩炵画 patience 杞病鏈夋彁鍗?灏卞己鍒剁粨鏉熻缁?            "train_pretrain_path": None, #鍙€夐璁粌妯″瀷鍦板潃
+        }
+    }],
+    "predictClassifyImgModuleByUnet":[{ # 鐢║net妗嗘灦棰勬祴鍥惧儚妯″瀷
+        "func_name": "batchpredictByUnet",
+        "params":{
+            "predict_model_dir": "/data_ware/work_data/dsImgRecognition/models/", # 妯″瀷鍦板潃
+            "predict_model_name": "unet_epoch50.pth", # 妯″瀷鍚嶇О 妯″瀷瀹屾暣鍦板潃=model_dir+model_name
+            "predict_img_dirs": "/data_ware/work_data/dsImgRecognition/src-img/00002/", # 鍘熷浘鏂囦欢澶瑰湴鍧€(鏀寔澶氫釜鏂囦欢澶?
+            鈥減redict_label_dirs": "data_ware/work_data/dsImgRecognition/img-recog/00002",
+            "predict_classify_dir": "data_ware/work_data/dsImgRecognition/utils/classify_list.json",
+            "predict_img_size": 512 # 璁粌鍥剧墖澶у皬 a*a
+        }
+    }],
+    "Trainline":[
+        { 
+            # 鎶婁簯绔殑鐨辩汗鏁版嵁鍚屾鍒版湰鍦?            "func_name": "syncFilesFromMino2LocalDisk",
+            "params":{
+                "FromMino2LocalDisk_src_storage_conn_name": "ds_pg_minio",
+                "FromMino2LocalDisk_src_path" :"AIDataManage/CskinWrinkle",  
+                "FromMino2LocalDisk_dst_storage_conn_name": "ds_pg_gpu_work_data",
+                "FromMino2LocalDisk_dst_path": "cskin_wrinkle",
+                "FromMino2LocalDisk_sync_modeode": "IncSync"  #鍚屾鏂瑰紡锛堟敞鎰忥細鍏ㄩ噺鍚屾 FullSync 姣旇緝鍗遍櫓锛屾厧閲嶏級
+            }
+        },
+        {
+            "func_name": "dataPreProcess",
+            "params":{
+                "folder_paths": [ 
+                    "/data_ware/work_data/DsImgRecognition/src-img/00000/",
+                    "/data_ware/work_data/DsImgRecognition/src-img/00001/",
+                    "/data_ware/work_data/cskin_wrinkle/nasolabial_fold/00000/src-mask/",
+                    "/data_ware/work_data/cskin_wrinkle/nasolabial_fold/00001/src-mask/"
+                ]  
+            }
+        },
+        { 
+            # 鐢║net妗嗘灦璁粌鍥惧儚妯″瀷
+            "func_name": "trainImgModuleByUnet",
+            "params":{
+                "train_img_dirs": [ 
+                "/data_ware/work_data/DsImgRecognition/src-img/00000/",
+                "/data_ware/work_data/DsImgRecognition/src-img/00001/"
+            ], #鍘熷浘鐨勬枃浠跺す鍦板潃
+                "train_mask_dirs": [
+                "/data_ware/work_data/cskin_wrinkle/nasolabial_fold/00000/src-mask/",
+                "/data_ware/work_data/cskin_wrinkle/nasolabial_fold/00001/src-mask/"
+            ], #鏍囩鍥剧殑鏂囦欢澶瑰湴鍧€
+                "train_model_dir": "/data_ware/work_data/cskin_wrinkle/models", #妯″瀷瀛樻斁鍦板潃
+                "train_model_name": "01-2-1", # 妯″瀷鍚嶇О 
+                "train_img_size": 512, # 璁粌鍥剧墖澶у皬 a*a
+                "train_batch_size": 4, # 鎵规澶у皬锛屾瘡杞缁冪殑鍥剧墖鏁伴噺
+                "train_epochs": 10, # 璁粌杞暟
+                "train_lr": 0.001, # 瀛︿範鐜?                "train_val_ratio": 0.1, #楠岃瘉闆嗗ぇ灏?                "train_patience": 15, #杩炵画 patience 杞病鏈夋彁鍗?灏卞己鍒剁粨鏉熻缁?                "train_pretrain_path": None, #鍙€夐璁粌妯″瀷鍦板潃
+            }
+        },
+        { 
+            # 鐢║net妗嗘灦棰勬祴鍥惧儚妯″瀷
+            "func_name": "batchpredictByUnet",
+            "params":{
+                "predict_model_dir": "/data_ware/work_data/cskin_wrinkle/models/", # 妯″瀷鍦板潃
+                "predict_model_name": "unet_epoch50.pth", # 妯″瀷鍚嶇О 妯″瀷瀹屾暣鍦板潃=model_dir+model_name
+                "predict_img_dirs": "/data_ware/work_data/DsImgRecognition/src-img/00002/", # 鍘熷浘鏂囦欢澶瑰湴鍧€(鏀寔澶氫釜鏂囦欢澶?
+                "predict_out_mask_dirs": "/data_ware/work_data/cskin_wrinkle/mask_dirs/", #棰勬祴mask鍥剧墖瀛樻斁鍦板潃
+                "predict_out_vis_dirs": "/data_ware/work_data/cskin_wrinkle/vis_dirs/", #棰勬祴vis鍥剧墖瀛樻斁鍦板潃
+                "predict_img_size": 512 # 璁粌鍥剧墖澶у皬 a*a
+            }
+        },
+        { 
+            # 鎶婃湰鍦扮殑鐨辩汗鏁版嵁鍚屾鍒颁簯绔?            "func_name": "syncFilesFromLocalDisk2Minio",
+            "params":{
+                "FromLocalDisk2Minio_src_storage_conn_name": "ds_pg_gpu_work_data",
+                "FromLocalDisk2Minio_src_path" :"cskin_wrinkle",
+                "FromLocalDisk2Minio_dst_storage_conn_name": "ds_pg_minio",
+                "FromLocalDisk2Minio_dst_path": "AIDataManage/CskinWrinkle",
+                "FromLocalDisk2Minio_sync_mode": "IncSync"  #鍚屾鏂瑰紡锛堟敞鎰忥細鍏ㄩ噺鍚屾 FullSync 姣旇緝鍗遍櫓锛屾厧閲嶏級
+            }
+        }
+    ]
+}
+
+
+# 鏈湴涓存椂鐩綍
+# local_data_path: "data/tmp"
+# local_model_path: "data/model/"
+# train_data_path: "data/train_data/"
+# train_model_path: "data/train_model/"
+
+#鏈嶅姟淇℃伅
+# cskin_gateway_url: "http://<REDACTED_URL>"
+# tool_master_ip: "<PRIVATE_IP>"
+# tool_master_port: "6063"
